@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AquaMonitor IoT - Sistema de Monitoreo de Agua</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e3f2fd 50%, #e0f7fa 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            padding: 25px 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .logo {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #2196F3, #1976D2);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+        }
+
+        .header-title h1 {
+            color: #1a237e;
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .header-title p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .header-right {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .time-display {
+            background: #f5f5f5;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .btn-export {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-export:hover {
+            background: #1976D2;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4);
+        }
+
+        /* Navigation Tabs */
+        .tabs {
+            background: white;
+            padding: 0 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 40px;
+        }
+
+        .tab {
+            padding: 20px 0;
+            cursor: pointer;
+            color: #666;
+            font-weight: 600;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            color: #2196F3;
+            border-bottom-color: #2196F3;
+        }
+
+        /* Metrics Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-top: 4px solid;
+            transition: all 0.3s;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.15);
+        }
+
+        .metric-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 20px;
+        }
+
+        .metric-title {
+            color: #666;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .metric-value {
+            font-size: 42px;
+            font-weight: 700;
+            color: #1a237e;
+            margin-bottom: 10px;
+        }
+
+        .metric-unit {
+            color: #999;
+            font-size: 18px;
+            margin-left: 5px;
+        }
+
+        .metric-trend {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        .trend-positive { color: #4CAF50; }
+        .trend-negative { color: #f44336; }
+
+        .metric-progress {
+            width: 100%;
+            height: 8px;
+            background: #f5f5f5;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .metric-progress-bar {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-normal { background: #E8F5E9; color: #2E7D32; }
+        .status-warning { background: #FFF3E0; color: #E65100; }
+        .status-critical { background: #FFEBEE; color: #C62828; }
+
+        /* Charts Section */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .chart-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .chart-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1a237e;
+        }
+
+        .chart-select {
+            padding: 8px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+
+        /* Sensors Grid */
+        .sensors-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .sensor-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #e0e0e0;
+            transition: all 0.3s;
+        }
+
+        .sensor-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-color: #2196F3;
+        }
+
+        .sensor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .sensor-name {
+            font-weight: 700;
+            color: #1a237e;
+            font-size: 16px;
+        }
+
+        .sensor-id {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .sensor-status {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-online { background: #4CAF50; }
+        .status-offline { background: #f44336; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .sensor-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .sensor-stat {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .stat-icon {
+            font-size: 16px;
+        }
+
+        /* Alerts Section */
+        .alerts-container {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .alerts-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .alerts-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1a237e;
+        }
+
+        .alerts-count {
+            background: #f44336;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .alert-item {
+            padding: 15px;
+            border-left: 4px solid;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .alert-high {
+            background: #FFEBEE;
+            border-color: #f44336;
+        }
+
+        .alert-medium {
+            background: #FFF3E0;
+            border-color: #FF9800;
+        }
+
+        .alert-low {
+            background: #E3F2FD;
+            border-color: #2196F3;
+        }
+
+        .alert-message {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .alert-time {
+            font-size: 12px;
+            color: #666;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+            border-top: 1px solid #e0e0e0;
+            margin-top: 40px;
+        }
+
+        .footer p {
+            margin: 5px 0;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .metrics-grid,
+            .charts-grid,
+            .sensors-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header-content {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .tabs {
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="header-left">
+                    <div class="logo">💧</div>
+                    <div class="header-title">
+                        <h1>AquaMonitor IoT</h1>
+                        <p>📍 Santander, Colombia</p>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="time-display" id="currentTime">00:00:00</div>
+                    <button class="btn-export" onclick="exportReport()">📥 Exportar Reporte</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Tabs -->
+        <nav class="tabs">
+            <div class="tab active" onclick="changeTab('overview')">Vista General</div>
+            <div class="tab" onclick="changeTab('analytics')">Análisis</div>
+            <div class="tab" onclick="changeTab('sensors')">Sensores</div>
+            <div class="tab" onclick="changeTab('alerts')">Alertas</div>
+        </nav>
+
+        <!-- Main Content -->
+        <main id="mainContent">
+            <!-- Metrics Cards -->
+            <div class="metrics-grid">
+                <div class="metric-card" style="border-top-color: #2196F3;">
+                    <div class="metric-header">
+                        <div>
+                            <div class="metric-title">Nivel de Agua</div>
+                            <div class="metric-value">
+                                <span id="waterLevel">78.5</span><span class="metric-unit">%</span>
+                            </div>
+                            <div class="metric-trend trend-negative">
+                                ↓ <span>2.3% vs. ayer</span>
+                            </div>
+                        </div>
+                        <div class="metric-icon" style="background: #E3F2FD; color: #2196F3;">
+                            🌊
+                        </div>
+                    </div>
+                    <div class="metric-progress">
+                        <div class="metric-progress-bar" id="waterLevelBar" style="width: 78.5%; background: #2196F3;"></div>
+                    </div>
+                    <span class="status-badge status-normal">Óptimo</span>
+                </div>
+
+                <div class="metric-card" style="border-top-color: #4CAF50;">
+                    <div class="metric-header">
+                        <div>
+                            <div class="metric-title">Turbidez</div>
+                            <div class="metric-value">
+                                <span id="turbidity">8.2</span><span class="metric-unit">NTU</span>
+                            </div>
+                            <div class="metric-trend trend-positive">
+                                ↑ <span>1.5% vs. ayer</span>
+                            </div>
+                        </div>
+                        <div class="metric-icon" style="background: #E8F5E9; color: #4CAF50;">
+                            📊
+                        </div>
+                    </div>
+                    <div class="metric-progress">
+                        <div class="metric-progress-bar" id="turbidityBar" style="width: 16.4%; background: #4CAF50;"></div>
+                    </div>
+                    <span class="status-badge status-normal">Óptimo</span>
+                </div>
+
+                <div class="metric-card" style="border-top-color: #FF9800;">
+                    <div class="metric-header">
+                        <div>
+                            <div class="metric-title">Conductividad</div>
+                            <div class="metric-value">
+                                <span id="conductivity">425</span><span class="metric-unit">µS/cm</span>
+                            </div>
+                            <div class="metric-trend trend-negative">
+                                ↓ <span>0.8% vs. ayer</span>
+                            </div>
+                        </div>
+                        <div class="metric-icon" style="background: #FFF3E0; color: #FF9800;">
+                            ⚡
+                        </div>
+                    </div>
+                    <div class="metric-progress">
+                        <div class="metric-progress-bar" id="conductivityBar" style="width: 42.5%; background: #FF9800;"></div>
+                    </div>
+                    <span class="status-badge status-normal">Óptimo</span>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h2 class="chart-title">Tendencia de Consumo (24h)</h2>
+                        <select class="chart-select">
+                            <option>Última hora</option>
+                            <option selected>Últimas 24h</option>
+                            <option>Última semana</option>
+                        </select>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="trendChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h2 class="chart-title">Consumo Semanal</h2>
+                        <select class="chart-select">
+                            <option selected>Esta semana</option>
+                            <option>Semana anterior</option>
+                            <option>Este mes</option>
+                        </select>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="weeklyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sensors Status -->
+            <div style="margin-bottom: 30px;">
+                <h2 style="font-size: 20px; font-weight: 700; color: #1a237e; margin-bottom: 20px;">
+                    Estado de Sensores IoT
+                </h2>
+                <div class="sensors-grid">
+                    <div class="sensor-card">
+                        <div class="sensor-header">
+                            <div>
+                                <div class="sensor-name">Tanque Principal</div>
+                                <div class="sensor-id">ESP32-001</div>
+                            </div>
+                            <div class="sensor-status status-online"></div>
+                        </div>
+                        <div class="sensor-stats">
+                            <div class="sensor-stat">
+                                <span class="stat-icon">🔋</span>
+                                <span>Batería: 95%</span>
+                            </div>
+                            <div class="sensor-stat">
+                                <span class="stat-icon">📶</span>
+                                <span>Señal: 85%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="sensor-card">
+                        <div class="sensor-header">
+                            <div>
+                                <div class="sensor-name">Distribución Norte</div>
+                                <div class="sensor-id">ESP32-002</div>
+                            </div>
+                            <div class="sensor-status status-online"></div>
+                        </div>
+                        <div class="sensor-stats">
+                            <div class="sensor-stat">
+                                <span class="stat-icon">🔋</span>
+                                <span>Batería: 78%</span>
+                            </div>
+                            <div class="sensor-stat">
+                                <span class="stat-icon">📶</span>
+                                <span>Señal: 92%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="sensor-card">
+                        <div class="sensor-header">
+                            <div>
+                                <div class="sensor-name">Sector Rural A</div>
+                                <div class="sensor-id">ESP32-003</div>
+                            </div>
+                            <div class="sensor-status status-online"></div>
+                        </div>
+                        <div class="sensor-stats">
+                            <div class="sensor-stat">
+                                <span class="stat-icon">🔋</span>
+                                <span>Batería: 82%</span>
+                            </div>
+                            <div class="sensor-stat">
+                                <span class="stat-icon">📶</span>
+                                <span>Señal: 68%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="sensor-card">
+                        <div class="sensor-header">
+                            <div>
+                                <div class="sensor-name">Sector Rural B</div>
+                                <div class="sensor-id">ESP32-004</div>
+                            </div>
+                            <div class="sensor-status status-online"></div>
+                        </div>
+                        <div class="sensor-stats">
+                            <div class="sensor-stat">
+                                <span class="stat-icon">🔋</span>
+                                <span>Batería: 45%</span>
+                            </div>
+                            <div class="sensor-stat">
+                                <span class="stat-icon">📶</span>
+                                <span>Señal: 75%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alerts -->
+            <div class="alerts-container">
+                <div class="alerts-header">
+                    <h2 class="alerts-title">🚨 Alertas Activas</h2>
+                    <span class="alerts-count">3</span>
+                </div>
+                <div>
+                    <div class="alert-item alert-high">
+                        <div class="alert-message">🔴 Posible fuga detectada en Sector B</div>
+                        <div class="alert-time">10:45 AM - Estado: Activo</div>
+                    </div>
+                    <div class="alert-item alert-medium">
+                        <div class="alert-message">🟠 Turbidez elevada en tanque principal</div>
+                        <div class="alert-time">09:30 AM - Estado: En revisión</div>
+                    </div>
+                    <div class="alert-item alert-low">
+                        <div class="alert-message">🔵 Mantenimiento programado para mañana</div>
+                        <div class="alert-time">08:15 AM - Estado: Programado</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p><strong>Sistema Inteligente de Monitoreo y Gestión del Agua</strong></p>
+            <p>Desarrollado por Juan Gabriel Almeida Martínez & Jeffrey Leonardo Muñoz Muñoz</p>
+            <p>Universidad Nacional Abierta y a Distancia (UNAD) - 2024</p>
+        </footer>
+    </div>
+
+    <script>
+        // Update time
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('currentTime').textContent = now.toLocaleTimeString('es-CO');
+        }
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        // Simular datos en tiempo real
+        function updateMetrics() {
+            const waterLevel = document.getElementById('waterLevel');
+            const turbidity = document.getElementById('turbidity');
+            const conductivity = document.getElementById('conductivity');
+            
+            const newWaterLevel = (parseFloat(waterLevel.textContent) + (Math.random() - 0.5) * 2).toFixed(1);
+            const newTurbidity = (parseFloat(turbidity.textContent) + (Math.random() - 0.5) * 0.5).toFixed(1);
+            const newConductivity = (parseFloat(conductivity.textContent) + (Math.random() - 0.5) * 10).toFixed(0);
+            
+            waterLevel.textContent = Math.max(0, Math.min(100, newWaterLevel));
+            turbidity.textContent = Math.max(0, Math.min(50, newTurbidity));
+            conductivity.textContent = Math.max(0, Math.min(1000, newConductivity));
+            
+            document.getElementById('waterLevelBar').style.width = waterLevel.textContent + '%';
+            document.getElementById('turbidityBar').style.width = (turbidity.textContent * 2) + '%';
+            document.getElementById('conductivityBar').style.width = (conductivity.textContent / 10) + '%';
+        }
+        setInterval(updateMetrics, 3000);
+
+        // Charts
+        const trendCtx = document.getElementById('trendChart').getContext('2d');
+        const trendData = {
+            labels: Array.from({length: 24}, (_, i) => `${i}:00`),
+            datasets: [{
+                label: 'Nivel de Agua (%)',
+                data: Array.from({length: 24}, () => 70 + Math.random() * 15),
+                borderColor: '#2196F3',
+                backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                fill: true,
+                tension: 0.4
+            }]
+        };
+
+        new Chart(trendCtx, {
+            type: 'line',
+            data: trendData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true, position: 'top' }
+                },
+                scales: {
+                    y: { beginAtZero: true, max: 100 }
+                }
+            }
+        });
+
+        const weeklyCtx = document.getElementById('weeklyChart').getContext('2d');
+        const weeklyData = {
+            labels: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
+            datasets: [
+                {
+                    label: 'Consumo Real (L)',
+                    data: [950, 1100, 890, 1050, 980, 850, 920],
+                    backgroundColor: '#2196F3'
+                },
+                {
+                    label: 'Objetivo (L)',
+                    data: [1000, 1000, 1000, 1000, 1000, 1000, 1000],
+                    backgroundColor: '#E0E0E0'
+                }
+            ]
+        };
+
+        new Chart(weeklyCtx, {
+            type: 'bar',
+            data: weeklyData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true, position: 'top' }
+                },
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+
+        // Tab navigation
+        function changeTab(tabName) {
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+            // Aquí podrías cambiar el contenido según la pestaña
+        }
+
+        // Export function
+        function exportReport() {
+            alert('📊 Exportando reporte en formato PDF...\n\nEsta funcionalidad se implementará con el backend.');
+        }
+    </script>
+</body>
+</html>

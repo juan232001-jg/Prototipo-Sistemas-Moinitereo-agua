@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AquaMonitorIoT — Sistema Inteligente de Monitoreo del Agua </title>
+
+  <!-- Chart.js-->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+
+  <style>
+    :root{
+      --blue-700:#1976D2;
+      --blue-400:#64B5F6;
+      --green:#4CAF50;
+      --orange:#FF9800;
+      --red:#F44336;
+      --bg:#F5F5F5;
+      --card:#FFFFFF;
+      --text:#24303F;
+      --muted:#666;
+      --radius:12px;
+      --max-width:420px;
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: linear-gradient(180deg,var(--bg), #e9f4fb 60%);
+      color:var(--text);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+    }
+
+    /* App frame */
+    .app{
+      width:100%;
+      max-width:var(--max-width);
+      background:transparent;
+      box-shadow:0 10px 30px rgba(30,47,60,0.08);
+      border-radius:16px;
+      overflow:hidden;
+    }
+
+    header.app-header{
+      background:linear-gradient(90deg,var(--blue-700), #1565C0);
+      color:white;
+      padding:12px 16px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+
+    header .title{
+      display:flex;
+      gap:10px;
+      align-items:center;
+    }
+
+    header .logo{
+      width:40px;height:40px;border-radius:10px;
+      background:linear-gradient(135deg,#64b5f6,#1565c0);
+      display:flex;align-items:center;justify-content:center;font-size:20px;
+      box-shadow:0 4px 10px rgba(0,0,0,0.12);
+    }
+
+    header h1{font-size:16px;margin:0;font-weight:700}
+    header p{margin:0;font-size:12px;opacity:0.9}
+
+    /* screens */
+    .screen{display:none;padding:16px;background:transparent}
+    .screen.active{display:block}
+
+    /* center content for splash */
+    .center{
+      display:flex;align-items:center;justify-content:center;flex-direction:column;height:280px;
+      gap:12px;
+    }
+
+    .btn{
+      background:var(--blue-700);color:white;border:0;padding:10px 14px;border-radius:10px;
+      font-weight:700;cursor:pointer;
+      box-shadow:0 6px 18px rgba(25,118,210,0.18);
+    }
+
+    .btn.secondary{
+      background:#fff;color:var(--blue-700);border:1px solid rgba(0,0,0,0.06);
+      box-shadow:none;font-weight:700;
+    }
+
+    /* login */
+    .card{
+      background:var(--card);padding:16px;border-radius:12px;box-shadow:0 8px 20px rgba(30,47,60,0.06);
+    }
+
+    .field{display:flex;flex-direction:column;margin-bottom:10px}
+    .field label{font-size:12px;color:var(--muted);margin-bottom:6px}
+    .field input, .field select{
+      padding:10px;border-radius:8px;border:1px solid #e6edf6;font-size:14px;
+    }
+
+    /* dashboard layout */
+    .row{display:flex;gap:12px;align-items:center}
+    .card-lg{background:var(--card);padding:12px;border-radius:12px;flex:1}
+    .progress{
+      height:12px;background:#f1f6fb;border-radius:8px;overflow:hidden;margin-top:8px;
+    }
+    .progress > i{display:block;height:100%;background:linear-gradient(90deg,var(--blue-700),var(--blue-400));}
+
+    .stat{
+      display:flex;flex-direction:column;gap:6px;
+    }
+    .stat .value{font-weight:800;font-size:20px}
+    .muted{color:var(--muted);font-size:13px}
+
+    /* small cards */
+    .small-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}
+    .small-card{background:var(--card);padding:10px;border-radius:10px;text-align:center}
+
+    /* sensor detail view */
+    .chart-wrap{height:160px;background:var(--card);border-radius:12px;padding:8px}
+
+    /* alerts list */
+    .alerts-list{display:flex;flex-direction:column;gap:8px}
+    .alert-item{background:var(--card);padding:12px;border-radius:10px;border-left:6px solid;display:flex;flex-direction:column;gap:6px}
+    .alert-item .time{font-size:12px;color:var(--muted)}
+    .alert-controls{display:flex;gap:8px;margin-top:8px}
+
+    /* bottom nav */
+    nav.bottom{
+      display:flex;gap:6px;padding:12px;background:rgba(255,255,255,0.8);
+      justify-content:space-between;align-items:center;
+      position:sticky;bottom:0;backdrop-filter: blur(4px);
+    }
+    nav.bottom .nav-item{flex:1;text-align:center;padding:8px;border-radius:8px;cursor:pointer;font-weight:700;color:var(--muted)}
+    nav.bottom .nav-item.active{background:linear-gradient(90deg,var(--blue-700),var(--blue-400));color:white}
+
+    /* responsive tweaks */
+    @media(min-width:800px){
+      body{background:#f3f7fb}
+      .app{max-width:900px}
+      .screen{padding:24px}
+      .chart-wrap{height:220px}
+    }
+  </style>
+</head>
+<body>
+  <div class="app" role="application" aria-label="AquaRural Prototype">
+
+    <!-- HEADER -->
+    <header class="app-header">
+      <div class="title">
+        <div class="logo">💧</div>
+        <div>
+          <h1>AquaMonitor IoT</h1>
+          <p style="margin-top:3px;font-size:12px">Monitoreo IoT para comunidades rurales</p>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;align-items:center">
+        <button class="btn secondary" id="btn-profile-open">Perfil</button>
+      </div>
+    </header>
+
+    <!-- SPLASH -->
+    <section id="splash" class="screen active">
+      <div class="center card">
+        <div style="font-size:36px">💧</div>
+        <h2 style="margin:0">AquaRural</h2>
+        <p class="muted" style="text-align:center;max-width:300px">Sistema inteligente de monitoreo y gestión del agua</p>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button class="btn" onclick="go('login')">Ingresar</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- LOGIN -->
+    <section id="login" class="screen">
+      <div class="card">
+        <h3 style="margin:0 0 8px 0">Iniciar sesión</h3>
+
+        <div class="field">
+          <label>Usuario</label>
+          <input id="login-user" type="text" placeholder="tu.usuario@comunidad" />
+        </div>
+        <div class="field">
+          <label>Contraseña</label>
+          <input id="login-pass" type="password" placeholder="••••••" />
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn" onclick="doLogin()">Acceder</button>
+          <button class="btn secondary" onclick="go('splash')">Volver</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- DASHBOARD -->
+    <section id="dashboard" class="screen">
+      <div style="display:flex;gap:12px;align-items:center">
+        <div class="card-lg">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div class="muted">Nivel del Tanque</div>
+              <div class="value" id="tankValue">68%</div>
+            </div>
+            <div style="text-align:right">
+              <div class="muted">Estado</div>
+              <div style="font-weight:800;color:var(--green)">OK</div>
+            </div>
+          </div>
+
+          <div class="progress" aria-hidden="true">
+            <i id="tankBar" style="width:68%"></i>
+          </div>
+
+          <div class="small-grid">
+            <div class="small-card">
+              <div class="muted">Turbidez</div>
+              <div class="value">12 NTU</div>
+            </div>
+            <div class="small-card">
+              <div class="muted">pH</div>
+              <div class="value">6.9</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="width:120px">
+          <div style="background:var(--card);padding:12px;border-radius:12px;text-align:center">
+            <div class="muted">Consumo (hoy)</div>
+            <div class="value">127 L</div>
+            <div style="font-size:12px;color:var(--muted)">Tendencia ↑</div>
+          </div>
+
+          <div style="height:12px"></div>
+
+          <div style="background:var(--card);padding:12px;border-radius:12px;text-align:center;margin-top:8px">
+            <div class="muted">Alertas</div>
+            <div class="value" id="alertsCount">2</div>
+            <div style="font-size:12px;color:var(--muted)">Activas</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px" class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <h4 style="margin:0">Consumo — última semana</h4>
+          <select id="rangeSelect" style="padding:6px;border-radius:8px;border:1px solid #e6edf6">
+            <option>7 días</option>
+            <option>30 días</option>
+          </select>
+        </div>
+        <div class="chart-wrap" style="margin-top:8px">
+          <canvas id="consumptionChart"></canvas>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;display:flex;gap:12px;align-items:flex-start">
+        <div style="flex:1" class="card">
+          <h4 style="margin:0 0 8px 0">Alertas recientes</h4>
+          <div class="alerts-list" id="alertsList">
+            <!-- alerts injected here -->
+          </div>
+          <div style="margin-top:8px;display:flex;gap:8px">
+            <button class="btn" onclick="go('newAlert')">Nueva alerta</button>
+            <button class="btn secondary" onclick="go('alerts')">Ver todas</button>
+          </div>
+        </div>
+
+        <div style="width:160px" class="card">
+          <h4 style="margin:0 0 8px 0">Dispositivos</h4>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div class="muted">Bomba principal</div>
+              <label>
+                <input type="checkbox" id="pumpToggle" checked />
+              </label>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div class="muted">Válvula 1</div>
+              <label>
+                <input type="checkbox" id="valve1" />
+              </label>
+            </div>
+          </div>
+          <div style="margin-top:10px">
+            <button class="btn" onclick="toggleAuto()">Modo Automático</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SENSOR DETAIL -->
+    <section id="sensorDetail" class="screen">
+      <div class="card">
+        <h4 style="margin:0 0 8px 0">Nivel del Tanque — Detalle</h4>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div class="muted">Nivel actual</div>
+            <div class="value" id="detailTankValue">68%</div>
+          </div>
+          <div style="text-align:right">
+            <div class="muted">Última lectura</div>
+            <div class="muted">Hace 12 minutos</div>
+          </div>
+        </div>
+
+        <div class="chart-wrap" style="margin-top:10px">
+          <canvas id="tankChart"></canvas>
+        </div>
+
+        <div style="margin-top:10px;display:flex;gap:8px">
+          <button class="btn" onclick="go('dashboard')">Volver</button>
+          <button class="btn secondary" onclick="go('history')">Historial completo</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ALERTS (FULL) -->
+    <section id="alerts" class="screen">
+      <div class="card">
+        <h4 style="margin:0 0 8px 0">Alertas</h4>
+
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <select id="filterSeverity" style="padding:8px;border-radius:8px;border:1px solid #e6edf6">
+            <option value="all">Todas</option>
+            <option value="high">Alta</option>
+            <option value="medium">Media</option>
+            <option value="low">Baja</option>
+          </select>
+          <button class="btn secondary" onclick="clearAlerts()">Borrar todas</button>
+        </div>
+
+        <div class="alerts-list" id="alertsFullList">
+          <!-- all alerts populated here -->
+        </div>
+
+        <div style="margin-top:8px;display:flex;gap:8px">
+          <button class="btn" onclick="go('newAlert')">Agregar alerta</button>
+          <button class="btn secondary" onclick="go('dashboard')">Volver</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- NEW ALERT -->
+    <section id="newAlert" class="screen">
+      <div class="card">
+        <h4 style="margin:0 0 8px 0">Crear Nueva Alerta</h4>
+
+        <div class="field">
+          <label>Nivel de Alerta</label>
+          <select id="alertLevel">
+            <option value="high">Alta</option>
+            <option value="medium">Media</option>
+            <option value="low">Baja</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Mensaje</label>
+          <input id="alertMessage" type="text" placeholder="Descripción corta de la alerta" />
+        </div>
+
+        <div class="field">
+          <label>Hora (opcional)</label>
+          <input id="alertTime" type="time" />
+        </div>
+
+        <div style="display:flex;gap:8px">
+          <button class="btn" onclick="addAlert()">Guardar alerta</button>
+          <button class="btn secondary" onclick="go('dashboard')">Cancelar</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- HISTORY (placeholder) -->
+    <section id="history" class="screen">
+      <div class="card">
+        <h4 style="margin:0 0 8px 0">Historial</h4>
+        <p class="muted">Vista de historial y registros (placeholder)</p>
+        <div style="height:10px"></div>
+        <button class="btn" onclick="go('dashboard')">Volver</button>
+      </div>
+    </section>
+
+    <!-- PROFILE -->
+    <section id="profile" class="screen">
+      <div class="card">
+        <h4 style="margin:0 0 8px 0">Perfil / Configuración</h4>
+
+        <div class="field">
+          <label>Nombre</label>
+          <input id="profileName" type="text" value="Administrador Local" />
+        </div>
+
+        <div class="field">
+          <label>Comunidad</label>
+          <input id="profileCommunity" type="text" value="Vereda El Porvenir" />
+        </div>
+
+        <div style="display:flex;gap:8px">
+          <button class="btn" onclick="saveProfile()">Guardar</button>
+          <button class="btn secondary" onclick="go('dashboard')">Salir</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- bottom navigation -->
+    <nav class="bottom">
+      <div class="nav-item active" data-target="dashboard" onclick="navClick(event)">Dashboard</div>
+      <div class="nav-item" data-target="sensorDetail" onclick="navClick(event)">Sensor</div>
+      <div class="nav-item" data-target="alerts" onclick="navClick(event)">Alertas</div>
+      <div class="nav-item" data-target="profile" onclick="navClick(event)">Perfil</div>
+    </nav>
+
+  </div>
+
+  <!-- SCRIPT: UI logic, charts & storage (localStorage) -->
+  <script>
+    // Simple screen router
+    function go(screenId){
+      document.querySelectorAll('.screen').forEach(s=> s.classList.remove('active'));
+      const target = document.getElementById(screenId);
+      if(target) target.classList.add('active');
+
+      // update bottom nav active state if matches
+      document.querySelectorAll('nav.bottom .nav-item').forEach(n=>{
+        n.classList.toggle('active', n.dataset.target===screenId);
+      });
+    }
+
+    function navClick(e){
+      const t = e.currentTarget.dataset.target;
+      go(t);
+    }
+
+    // pseudo-login
+    function doLogin(){
+      // keep it simple: accept any input
+      go('dashboard');
+    }
+
+    // UI interactions
+    document.getElementById('btn-profile-open').addEventListener('click', ()=> go('profile'));
+
+    // Toggle automatic mode (demo)
+    function toggleAuto(){
+      alert('Modo automático activado (demo).');
+    }
+
+    // Save profile (demo)
+    function saveProfile(){
+      const name = document.getElementById('profileName').value;
+      const community = document.getElementById('profileCommunity').value;
+      localStorage.setItem('aqua_profile', JSON.stringify({name,community}));
+      alert('Perfil guardado localmente.');
+    }
+
+    // ---------------- ALERTS (localStorage) ----------------
+    // Structure: alerts = [{id,level,msg,time,createdAt}]
+    function loadAlerts(){
+      const raw = localStorage.getItem('aqua_alerts');
+      return raw ? JSON.parse(raw) : [];
+    }
+
+    function saveAlerts(alerts){
+      localStorage.setItem('aqua_alerts', JSON.stringify(alerts));
+      renderAlerts();
+    }
+
+    function addAlert(){
+      const level = document.getElementById('alertLevel').value;
+      const msg = document.getElementById('alertMessage').value.trim();
+      const time = document.getElementById('alertTime').value || null;
+
+      if(!msg){
+        alert('Por favor escribe un mensaje para la alerta.');
+        return;
+      }
+
+      const alerts = loadAlerts();
+      const id = Date.now();
+      alerts.unshift({
+        id, level, msg, time,
+        createdAt: new Date().toISOString()
+      });
+      saveAlerts(alerts);
+      // clear form
+      document.getElementById('alertMessage').value = '';
+      document.getElementById('alertTime').value = '';
+      // go to alerts list or keep user where they are
+      go('alerts');
+      flash('Alerta creada.');
+    }
+
+    function clearAlerts(){
+      if(!confirm('¿Borrar todas las alertas?')) return;
+      localStorage.removeItem('aqua_alerts');
+      renderAlerts();
+    }
+
+    function renderAlerts(){
+      const alerts = loadAlerts();
+      const shortList = alerts.slice(0,3); // recent on dashboard
+      const alertsList = document.getElementById('alertsList');
+      const alertsFullList = document.getElementById('alertsFullList');
+      const alertsCount = document.getElementById('alertsCount');
+
+      // dashboard short list
+      if(alertsList){
+        alertsList.innerHTML = '';
+        if(shortList.length===0){
+          alertsList.innerHTML = '<div class="muted">Sin alertas recientes</div>';
+        } else {
+          shortList.forEach(a=>{
+            const el = document.createElement('div');
+            el.className = 'alert-item';
+            el.style.borderLeftColor = a.level==='high'? 'var(--red)' : a.level==='medium'? 'var(--orange)' : 'var(--blue-400)';
+            el.innerHTML = `<div style="font-weight:700">${a.msg}</div>
+                            <div class="time">${a.time ? a.time + ' · ' : ''}${timeAgo(a.createdAt)}</div>`;
+            alertsList.appendChild(el);
+          });
+        }
+      }
+
+      // full list
+      if(alertsFullList){
+        alertsFullList.innerHTML = '';
+        if(alerts.length===0){
+          alertsFullList.innerHTML = '<div class="muted">No hay alertas guardadas</div>';
+        } else {
+          alerts.forEach(a=>{
+            const el = document.createElement('div');
+            el.className = 'alert-item';
+            el.style.borderLeftColor = a.level==='high'? 'var(--red)' : a.level==='medium'? 'var(--orange)' : 'var(--blue-400)';
+            el.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center">
+                              <div style="font-weight:800">${a.msg}</div>
+                              <div class="muted">${a.level.toUpperCase()}</div>
+                            </div>
+                            <div class="time">${a.time ? 'Hora: '+a.time+' · ' : ''}${timeAgo(a.createdAt)}</div>
+                            <div class="alert-controls">
+                              <button class="btn secondary" onclick="dismissAlert(${a.id})">Marcar como completada</button>
+                              <button class="btn" onclick="editAlert(${a.id})">Editar</button>
+                            </div>`;
+            alertsFullList.appendChild(el);
+          });
+        }
+      }
+
+      if(alertsCount) alertsCount.textContent = alerts.length;
+    }
+
+    function dismissAlert(id){
+      let alerts = loadAlerts();
+      alerts = alerts.filter(a=>a.id!==id);
+      saveAlerts(alerts);
+      flash('Alerta descartada.');
+    }
+
+    function editAlert(id){
+      const alerts = loadAlerts();
+      const a = alerts.find(x=>x.id===id);
+      if(!a) return alert('Alerta no encontrada');
+      // prefill newAlert form
+      document.getElementById('alertLevel').value = a.level;
+      document.getElementById('alertMessage').value = a.msg;
+      if(a.time) document.getElementById('alertTime').value = a.time;
+      // remove old alert and open create view
+      const filtered = alerts.filter(x=>x.id!==id);
+      saveAlerts(filtered);
+      go('newAlert');
+      flash('Edita la alerta y guarda.');
+    }
+
+    // tiny utility: time ago
+    function timeAgo(iso){
+      const d = new Date(iso);
+      const diff = Math.floor((Date.now() - d.getTime())/1000);
+      if(diff < 60) return `${diff}s`;
+      if(diff < 3600) return `${Math.floor(diff/60)}m`;
+      if(diff < 86400) return `${Math.floor(diff/3600)}h`;
+      return `${Math.floor(diff/86400)}d`;
+    }
+
+    // simple toast
+    function flash(msg){
+      const t = document.createElement('div');
+      t.textContent = msg;
+      t.style.position='fixed';
+      t.style.left='50%';
+      t.style.top='20px';
+      t.style.transform='translateX(-50%)';
+      t.style.background='rgba(0,0,0,0.8)';
+      t.style.color='white';
+      t.style.padding='8px 12px';
+      t.style.borderRadius='8px';
+      t.style.zIndex=9999;
+      document.body.appendChild(t);
+      setTimeout(()=> t.remove(),1800);
+    }
+
+    // initialize alerts on load
+    renderAlerts();
+
+    // ---------------- CHARTS ----------------
+    // consumption chart
+    const consumptionCtx = document.getElementById('consumptionChart').getContext('2d');
+    const consumptionChart = new Chart(consumptionCtx, {
+      type:'line',
+      data:{
+        labels:['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'],
+        datasets:[{
+          label:'Consumo (L)',
+          data: [120,130,125,140,127,110,133],
+          borderColor: 'rgba(25,118,210,1)',
+          backgroundColor: 'rgba(33,150,243,0.12)',
+          fill:true,
+          tension:0.35,
+          pointRadius:2
+        }]
+      },
+      options:{
+        plugins:{legend:{display:false}},
+        scales:{y:{beginAtZero:true}}
+      }
+    });
+
+    // tank chart
+    const tankCtx = document.getElementById('tankChart').getContext('2d');
+    const tankChart = new Chart(tankCtx, {
+      type:'bar',
+      data:{
+        labels:['00:00','04:00','08:00','12:00','16:00','20:00'],
+        datasets:[{
+          label:'Nivel (%)',
+          data:[65,67,70,68,69,68],
+          backgroundColor:'rgba(76,175,80,0.9)'
+        }]
+      },
+      options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100}}}
+    });
+
+    // update tank UI demo
+    function updateTankUI(value){
+      document.getElementById('tankValue').textContent = value + '%';
+      document.getElementById('tankBar').style.width = value + '%';
+      document.getElementById('detailTankValue').textContent = value + '%';
+    }
+    // small demo: animate tank randomly every 6s
+    setInterval(()=>{
+      const val = 55 + Math.floor(Math.random()*35);
+      updateTankUI(val);
+    },6000);
+
+    // handle pump toggle (demo)
+    document.getElementById('pumpToggle').addEventListener('change', function(){
+      flash(this.checked ? 'Bomba encendida' : 'Bomba apagada');
+    });
+
+    // when the filter select changes
+    document.getElementById('filterSeverity').addEventListener('change', function(){
+      const val = this.value;
+      const all = loadAlerts();
+      const list = document.getElementById('alertsFullList');
+      if(!list) return;
+      list.innerHTML = '';
+      const filtered = val==='all' ? all : all.filter(a=>a.level===val);
+      if(filtered.length===0){ list.innerHTML = '<div class="muted">No hay alertas para este filtro</div>'; return; }
+      filtered.forEach(a=>{
+        const el = document.createElement('div');
+        el.className = 'alert-item';
+        el.style.borderLeftColor = a.level==='high'? 'var(--red)' : a.level==='medium'? 'var(--orange)' : 'var(--blue-400)';
+        el.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center">
+                          <div style="font-weight:800">${a.msg}</div>
+                          <div class="muted">${a.level.toUpperCase()}</div>
+                        </div>
+                        <div class="time">${a.time ? 'Hora: '+a.time+' · ' : ''}${timeAgo(a.createdAt)}</div>
+                        <div class="alert-controls">
+                          <button class="btn secondary" onclick="dismissAlert(${a.id})">Dismiss</button>
+                          <button class="btn" onclick="editAlert(${a.id})">Editar</button>
+                        </div>`;
+        list.appendChild(el);
+      });
+    });
+
+    // prepopulate demo alerts if none exist
+    (function seedAlertsIfEmpty(){
+      const current = loadAlerts();
+      if(current.length===0){
+        const demo = [
+          { id: Date.now()+1, level:'high', msg:'Nivel crítico del tanque: 15%', time:'', createdAt:new Date(Date.now()-3600*1000).toISOString() },
+          { id: Date.now()+2, level:'medium', msg:'Consumo elevado en sector norte', time:'08:00', createdAt:new Date(Date.now()-7200*1000).toISOString() }
+        ];
+        saveAlerts(demo);
+      }
+    })();
+
+    // profile load
+    (function loadProfile(){
+      const raw = localStorage.getItem('aqua_profile');
+      if(!raw) return;
+      try{
+        const p = JSON.parse(raw);
+        document.getElementById('profileName').value = p.name || '';
+        document.getElementById('profileCommunity').value = p.community || '';
+      }catch(e){}
+    })();
+
+  </script>
+</body>
+</html>

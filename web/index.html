@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AquaMonitor IoT - Sistema de Monitoreo de Agua</title>
+    <title>AquaMonitor IoT - Administración</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -20,7 +21,7 @@
         }
 
         .container {
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
         }
 
@@ -85,7 +86,7 @@
             font-weight: 600;
         }
 
-        .btn-export {
+        .btn {
             background: #2196F3;
             color: white;
             border: none;
@@ -94,15 +95,32 @@
             cursor: pointer;
             font-weight: 600;
             transition: all 0.3s;
+            font-size: 14px;
         }
 
-        .btn-export:hover {
+        .btn:hover {
             background: #1976D2;
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4);
         }
 
-        /* Navigation Tabs */
+        .btn-success {
+            background: #4CAF50;
+        }
+
+        .btn-success:hover {
+            background: #388E3C;
+        }
+
+        .btn-secondary {
+            background: #757575;
+        }
+
+        .btn-secondary:hover {
+            background: #616161;
+        }
+
+        /* Tabs */
         .tabs {
             background: white;
             padding: 0 30px;
@@ -127,10 +145,10 @@
             border-bottom-color: #2196F3;
         }
 
-        /* Metrics Grid */
+        /* Dashboard Grid */
         .metrics-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 25px;
             margin-bottom: 30px;
         }
@@ -142,6 +160,7 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             border-top: 4px solid;
             transition: all 0.3s;
+            cursor: pointer;
         }
 
         .metric-card:hover {
@@ -198,21 +217,6 @@
         .trend-positive { color: #4CAF50; }
         .trend-negative { color: #f44336; }
 
-        .metric-progress {
-            width: 100%;
-            height: 8px;
-            background: #f5f5f5;
-            border-radius: 4px;
-            overflow: hidden;
-            margin-bottom: 10px;
-        }
-
-        .metric-progress-bar {
-            height: 100%;
-            border-radius: 4px;
-            transition: width 0.3s;
-        }
-
         .status-badge {
             display: inline-block;
             padding: 4px 12px;
@@ -225,170 +229,217 @@
         .status-warning { background: #FFF3E0; color: #E65100; }
         .status-critical { background: #FFEBEE; color: #C62828; }
 
-        /* Charts Section */
-        .charts-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-            gap: 25px;
-            margin-bottom: 30px;
-        }
-
-        .chart-card {
+        /* Table */
+        .table-container {
             background: white;
             padding: 25px;
             border-radius: 15px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            overflow-x: auto;
         }
 
-        .chart-header {
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .table-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1a237e;
+        }
+
+        .table-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        th {
+            background: #f5f5f5;
+            font-weight: 700;
+            color: #1a237e;
+            font-size: 13px;
+            text-transform: uppercase;
+        }
+
+        tr:hover {
+            background: #f9f9f9;
+        }
+
+        .action-btn {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .action-btn-view {
+            background: #E3F2FD;
+            color: #2196F3;
+        }
+
+        .action-btn-edit {
+            background: #FFF3E0;
+            color: #FF9800;
+        }
+
+        .action-btn-delete {
+            background: #FFEBEE;
+            color: #f44336;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 20px;
         }
 
-        .chart-title {
+        .modal-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1a237e;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: #2196F3;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .detail-item {
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+
+        .detail-label {
+            font-size: 12px;
+            color: #666;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .detail-value {
             font-size: 18px;
             font-weight: 700;
             color: #1a237e;
         }
 
-        .chart-select {
-            padding: 8px 15px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
-            cursor: pointer;
+        /* Charts */
+        .chart-container {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
         }
 
-        .chart-container {
+        .chart-wrapper {
             position: relative;
             height: 300px;
         }
 
-        /* Sensors Grid */
-        .sensors-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .sensor-card {
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            border: 1px solid #e0e0e0;
-            transition: all 0.3s;
-        }
-
-        .sensor-card:hover {
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            border-color: #2196F3;
-        }
-
-        .sensor-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .sensor-name {
-            font-weight: 700;
-            color: #1a237e;
-            font-size: 16px;
-        }
-
-        .sensor-id {
-            font-size: 12px;
-            color: #999;
-        }
-
-        .sensor-status {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
-
-        .status-online { background: #4CAF50; }
-        .status-offline { background: #f44336; }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        .sensor-stats {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-top: 15px;
-        }
-
-        .sensor-stat {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 13px;
-            color: #666;
-        }
-
-        .stat-icon {
-            font-size: 16px;
-        }
-
-        /* Alerts Section */
-        .alerts-container {
-            background: white;
-            padding: 25px;
-            border-radius: 15px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-
-        .alerts-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .alerts-title {
-            font-size: 18px;
-            font-weight: 700;
-            color: #1a237e;
-        }
-
-        .alerts-count {
-            background: #f44336;
-            color: white;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 700;
-        }
-
+        /* Alerts Management */
         .alert-item {
             padding: 15px;
             border-left: 4px solid;
             border-radius: 8px;
             margin-bottom: 15px;
+            background: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        .alert-high {
-            background: #FFEBEE;
-            border-color: #f44336;
-        }
+        .alert-high { border-color: #f44336; background: #FFEBEE; }
+        .alert-medium { border-color: #FF9800; background: #FFF3E0; }
+        .alert-low { border-color: #2196F3; background: #E3F2FD; }
 
-        .alert-medium {
-            background: #FFF3E0;
-            border-color: #FF9800;
-        }
-
-        .alert-low {
-            background: #E3F2FD;
-            border-color: #2196F3;
+        .alert-content {
+            flex: 1;
         }
 
         .alert-message {
@@ -397,39 +448,28 @@
             margin-bottom: 8px;
         }
 
-        .alert-time {
+        .alert-meta {
             font-size: 12px;
             color: #666;
         }
 
-        /* Footer */
-        .footer {
-            text-align: center;
-            padding: 30px;
-            color: #666;
-            border-top: 1px solid #e0e0e0;
-            margin-top: 40px;
-        }
-
-        .footer p {
-            margin: 5px 0;
+        .alert-actions {
+            display: flex;
+            gap: 8px;
         }
 
         /* Responsive */
         @media (max-width: 768px) {
-            .metrics-grid,
-            .charts-grid,
-            .sensors-grid {
+            .metrics-grid {
                 grid-template-columns: 1fr;
             }
 
-            .header-content {
-                flex-direction: column;
-                align-items: flex-start;
+            .detail-grid {
+                grid-template-columns: 1fr;
             }
 
-            .tabs {
-                overflow-x: auto;
+            .table-container {
+                overflow-x: scroll;
             }
         }
     </style>
@@ -442,30 +482,30 @@
                 <div class="header-left">
                     <div class="logo">💧</div>
                     <div class="header-title">
-                        <h1>AquaMonitor IoT</h1>
-                        <p>📍 Santander, Colombia</p>
+                        <h1>Panel de Administración</h1>
+                        <p>📍 AquaMonitor IoT - Santander, Colombia</p>
                     </div>
                 </div>
                 <div class="header-right">
                     <div class="time-display" id="currentTime">00:00:00</div>
-                    <button class="btn-export" onclick="exportReport()">📥 Exportar Reporte</button>
+                    <button class="btn btn-success" onclick="exportToExcel()">📥 Exportar Excel</button>
                 </div>
             </div>
         </header>
 
         <!-- Tabs -->
         <nav class="tabs">
-            <div class="tab active" onclick="changeTab('overview')">Vista General</div>
-            <div class="tab" onclick="changeTab('analytics')">Análisis</div>
-            <div class="tab" onclick="changeTab('sensors')">Sensores</div>
-            <div class="tab" onclick="changeTab('alerts')">Alertas</div>
+            <div class="tab active" onclick="changeTab('dashboard')">Dashboard</div>
+            <div class="tab" onclick="changeTab('sensores')">Sensores</div>
+            <div class="tab" onclick="changeTab('alertas')">Gestión de Alertas</div>
+            <div class="tab" onclick="changeTab('reportes')">Reportes</div>
         </nav>
 
-        <!-- Main Content -->
-        <main id="mainContent">
-            <!-- Metrics Cards -->
+        <!-- Dashboard View -->
+        <div id="dashboard-view" class="view">
+            <!-- Metrics -->
             <div class="metrics-grid">
-                <div class="metric-card" style="border-top-color: #2196F3;">
+                <div class="metric-card" style="border-top-color: #2196F3;" onclick="openDetailModal('nivel')">
                     <div class="metric-header">
                         <div>
                             <div class="metric-title">Nivel de Agua</div>
@@ -476,17 +516,12 @@
                                 ↓ <span>2.3% vs. ayer</span>
                             </div>
                         </div>
-                        <div class="metric-icon" style="background: #E3F2FD; color: #2196F3;">
-                            🌊
-                        </div>
-                    </div>
-                    <div class="metric-progress">
-                        <div class="metric-progress-bar" id="waterLevelBar" style="width: 78.5%; background: #2196F3;"></div>
+                        <div class="metric-icon" style="background: #E3F2FD; color: #2196F3;">🌊</div>
                     </div>
                     <span class="status-badge status-normal">Óptimo</span>
                 </div>
 
-                <div class="metric-card" style="border-top-color: #4CAF50;">
+                <div class="metric-card" style="border-top-color: #4CAF50;" onclick="openDetailModal('turbidez')">
                     <div class="metric-header">
                         <div>
                             <div class="metric-title">Turbidez</div>
@@ -497,17 +532,12 @@
                                 ↑ <span>1.5% vs. ayer</span>
                             </div>
                         </div>
-                        <div class="metric-icon" style="background: #E8F5E9; color: #4CAF50;">
-                            📊
-                        </div>
-                    </div>
-                    <div class="metric-progress">
-                        <div class="metric-progress-bar" id="turbidityBar" style="width: 16.4%; background: #4CAF50;"></div>
+                        <div class="metric-icon" style="background: #E8F5E9; color: #4CAF50;">📊</div>
                     </div>
                     <span class="status-badge status-normal">Óptimo</span>
                 </div>
 
-                <div class="metric-card" style="border-top-color: #FF9800;">
+                <div class="metric-card" style="border-top-color: #FF9800;" onclick="openDetailModal('conductividad')">
                     <div class="metric-header">
                         <div>
                             <div class="metric-title">Conductividad</div>
@@ -518,268 +548,774 @@
                                 ↓ <span>0.8% vs. ayer</span>
                             </div>
                         </div>
-                        <div class="metric-icon" style="background: #FFF3E0; color: #FF9800;">
-                            ⚡
-                        </div>
+                        <div class="metric-icon" style="background: #FFF3E0; color: #FF9800;">⚡</div>
                     </div>
-                    <div class="metric-progress">
-                        <div class="metric-progress-bar" id="conductivityBar" style="width: 42.5%; background: #FF9800;"></div>
+                    <span class="status-badge status-normal">Óptimo</span>
+                </div>
+
+                <div class="metric-card" style="border-top-color: #9C27B0;" onclick="openDetailModal('ph')">
+                    <div class="metric-header">
+                        <div>
+                            <div class="metric-title">pH del Agua</div>
+                            <div class="metric-value">
+                                <span id="phLevel">6.9</span><span class="metric-unit">pH</span>
+                            </div>
+                            <div class="metric-trend trend-positive">
+                                ↑ <span>0.2 vs. ayer</span>
+                            </div>
+                        </div>
+                        <div class="metric-icon" style="background: #F3E5F5; color: #9C27B0;">🧪</div>
                     </div>
                     <span class="status-badge status-normal">Óptimo</span>
                 </div>
             </div>
 
+            <!-- Sensors Table -->
+            <div class="table-container">
+                <div class="table-header">
+                    <h2 class="table-title">Estado de Sensores IoT</h2>
+                    <div class="table-actions">
+                        <button class="btn" onclick="refreshSensors()">🔄 Actualizar</button>
+                        <button class="btn btn-secondary" onclick="exportSensorsExcel()">📥 Exportar</button>
+                    </div>
+                </div>
+                <table id="sensorsTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>Estado</th>
+                            <th>Batería</th>
+                            <th>Señal</th>
+                            <th>Última Lectura</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sensorsTableBody">
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+
             <!-- Charts -->
-            <div class="charts-grid">
-                <div class="chart-card">
-                    <div class="chart-header">
-                        <h2 class="chart-title">Tendencia de Consumo (24h)</h2>
-                        <select class="chart-select">
-                            <option>Última hora</option>
-                            <option selected>Últimas 24h</option>
-                            <option>Última semana</option>
+            <div class="chart-container">
+                <h2 class="table-title" style="margin-bottom: 20px;">Tendencia de Consumo (24h)</h2>
+                <div class="chart-wrapper">
+                    <canvas id="consumptionChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sensors View -->
+        <div id="sensores-view" class="view" style="display: none;">
+            <div class="table-container">
+                <div class="table-header">
+                    <h2 class="table-title">Gestión de Sensores</h2>
+                    <div class="table-actions">
+                        <button class="btn btn-success" onclick="addNewSensor()">➕ Agregar Sensor</button>
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>Tipo</th>
+                            <th>Estado</th>
+                            <th>Ubicación</th>
+                            <th>Instalación</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sensorsManagementBody">
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Alerts View -->
+        <div id="alertas-view" class="view" style="display: none;">
+            <div class="table-container">
+                <div class="table-header">
+                    <h2 class="table-title">🚨 Gestión de Alertas</h2>
+                    <div class="table-actions">
+                        <button class="btn btn-success" onclick="openAlertModal('create')">➕ Nueva Alerta</button>
+                        <select id="alertFilter" onchange="filterAlerts()" class="form-select" style="width: 200px;">
+                            <option value="all">Todas las Alertas</option>
+                            <option value="high">Alta Prioridad</option>
+                            <option value="medium">Media Prioridad</option>
+                            <option value="low">Baja Prioridad</option>
+                            <option value="active">Activas</option>
+                            <option value="resolved">Resueltas</option>
                         </select>
                     </div>
-                    <div class="chart-container">
-                        <canvas id="trendChart"></canvas>
-                    </div>
                 </div>
-
-                <div class="chart-card">
-                    <div class="chart-header">
-                        <h2 class="chart-title">Consumo Semanal</h2>
-                        <select class="chart-select">
-                            <option selected>Esta semana</option>
-                            <option>Semana anterior</option>
-                            <option>Este mes</option>
-                        </select>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="weeklyChart"></canvas>
-                    </div>
+                <div id="alertsList">
+                    <!-- Populated by JavaScript -->
                 </div>
             </div>
+        </div>
 
-            <!-- Sensors Status -->
-            <div style="margin-bottom: 30px;">
-                <h2 style="font-size: 20px; font-weight: 700; color: #1a237e; margin-bottom: 20px;">
-                    Estado de Sensores IoT
-                </h2>
-                <div class="sensors-grid">
-                    <div class="sensor-card">
-                        <div class="sensor-header">
-                            <div>
-                                <div class="sensor-name">Tanque Principal</div>
-                                <div class="sensor-id">ESP32-001</div>
-                            </div>
-                            <div class="sensor-status status-online"></div>
-                        </div>
-                        <div class="sensor-stats">
-                            <div class="sensor-stat">
-                                <span class="stat-icon">🔋</span>
-                                <span>Batería: 95%</span>
-                            </div>
-                            <div class="sensor-stat">
-                                <span class="stat-icon">📶</span>
-                                <span>Señal: 85%</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="sensor-card">
-                        <div class="sensor-header">
-                            <div>
-                                <div class="sensor-name">Distribución Norte</div>
-                                <div class="sensor-id">ESP32-002</div>
-                            </div>
-                            <div class="sensor-status status-online"></div>
-                        </div>
-                        <div class="sensor-stats">
-                            <div class="sensor-stat">
-                                <span class="stat-icon">🔋</span>
-                                <span>Batería: 78%</span>
-                            </div>
-                            <div class="sensor-stat">
-                                <span class="stat-icon">📶</span>
-                                <span>Señal: 92%</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="sensor-card">
-                        <div class="sensor-header">
-                            <div>
-                                <div class="sensor-name">Sector Rural A</div>
-                                <div class="sensor-id">ESP32-003</div>
-                            </div>
-                            <div class="sensor-status status-online"></div>
-                        </div>
-                        <div class="sensor-stats">
-                            <div class="sensor-stat">
-                                <span class="stat-icon">🔋</span>
-                                <span>Batería: 82%</span>
-                            </div>
-                            <div class="sensor-stat">
-                                <span class="stat-icon">📶</span>
-                                <span>Señal: 68%</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="sensor-card">
-                        <div class="sensor-header">
-                            <div>
-                                <div class="sensor-name">Sector Rural B</div>
-                                <div class="sensor-id">ESP32-004</div>
-                            </div>
-                            <div class="sensor-status status-online"></div>
-                        </div>
-                        <div class="sensor-stats">
-                            <div class="sensor-stat">
-                                <span class="stat-icon">🔋</span>
-                                <span>Batería: 45%</span>
-                            </div>
-                            <div class="sensor-stat">
-                                <span class="stat-icon">📶</span>
-                                <span>Señal: 75%</span>
-                            </div>
-                        </div>
+        <!-- Reports View -->
+        <div id="reportes-view" class="view" style="display: none;">
+            <div class="table-container">
+                <div class="table-header">
+                    <h2 class="table-title">📊 Generación de Reportes</h2>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Tipo de Reporte</label>
+                    <select class="form-select" id="reportType">
+                        <option value="general">Reporte General</option>
+                        <option value="sensores">Reporte de Sensores</option>
+                        <option value="alertas">Reporte de Alertas</option>
+                        <option value="consumo">Reporte de Consumo</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Rango de Fechas</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="date" class="form-input" id="reportDateFrom" style="flex: 1;">
+                        <input type="date" class="form-input" id="reportDateTo" style="flex: 1;">
                     </div>
                 </div>
+                <button class="btn btn-success" onclick="generateReport()">📥 Generar y Descargar</button>
             </div>
+        </div>
+    </div>
 
-            <!-- Alerts -->
-            <div class="alerts-container">
-                <div class="alerts-header">
-                    <h2 class="alerts-title">🚨 Alertas Activas</h2>
-                    <span class="alerts-count">3</span>
-                </div>
-                <div>
-                    <div class="alert-item alert-high">
-                        <div class="alert-message">🔴 Posible fuga detectada en Sector B</div>
-                        <div class="alert-time">10:45 AM - Estado: Activo</div>
-                    </div>
-                    <div class="alert-item alert-medium">
-                        <div class="alert-message">🟠 Turbidez elevada en tanque principal</div>
-                        <div class="alert-time">09:30 AM - Estado: En revisión</div>
-                    </div>
-                    <div class="alert-item alert-low">
-                        <div class="alert-message">🔵 Mantenimiento programado para mañana</div>
-                        <div class="alert-time">08:15 AM - Estado: Programado</div>
-                    </div>
-                </div>
+    <!-- Detail Modal -->
+    <div id="detailModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modalTitle">Detalle del Sensor</h2>
+                <button class="modal-close" onclick="closeModal('detailModal')">&times;</button>
             </div>
-        </main>
+            <div id="modalBody">
+                <!-- Populated by JavaScript -->
+            </div>
+        </div>
+    </div>
 
-        <!-- Footer -->
-        <footer class="footer">
-            <p><strong>Sistema Inteligente de Monitoreo y Gestión del Agua</strong></p>
-            <p>Desarrollado por Juan Gabriel Almeida Martínez & Jeffrey Leonardo Muñoz Muñoz</p>
-            <p>Universidad Nacional Abierta y a Distancia (UNAD) - 2024</p>
-        </footer>
+    <!-- Alert Modal -->
+    <div id="alertModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="alertModalTitle">Nueva Alerta</h2>
+                <button class="modal-close" onclick="closeModal('alertModal')">&times;</button>
+            </div>
+            <form onsubmit="saveAlert(event)">
+                <div class="form-group">
+                    <label class="form-label">Prioridad</label>
+                    <select class="form-select" id="alertPriority" required>
+                        <option value="high">Alta</option>
+                        <option value="medium">Media</option>
+                        <option value="low">Baja</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Tipo de Alerta</label>
+                    <select class="form-select" id="alertType" required>
+                        <option value="nivel">Nivel de Agua</option>
+                        <option value="turbidez">Turbidez</option>
+                        <option value="conductividad">Conductividad</option>
+                        <option value="ph">pH</option>
+                        <option value="sensor">Sensor</option>
+                        <option value="sistema">Sistema</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Mensaje</label>
+                    <input type="text" class="form-input" id="alertMessage" required placeholder="Descripción de la alerta">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Sensor Relacionado (Opcional)</label>
+                    <select class="form-select" id="alertSensor">
+                        <option value="">Ninguno</option>
+                        <option value="ESP32-001">ESP32-001 - Tanque Principal</option>
+                        <option value="ESP32-002">ESP32-002 - Distribución Norte</option>
+                        <option value="ESP32-003">ESP32-003 - Sector Rural A</option>
+                        <option value="ESP32-004">ESP32-004 - Sector Rural B</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit" class="btn btn-success">💾 Guardar</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('alertModal')">Cancelar</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <script>
-        // Update time
+        // Data Storage
+        let sensorsData = [
+            { id: 'ESP32-001', name: 'Tanque Principal', status: 'online', battery: 95, signal: 85, lastReading: '2 min', type: 'Nivel', location: 'Tanque Central', installed: '2024-01-15' },
+            { id: 'ESP32-002', name: 'Distribución Norte', status: 'online', battery: 78, signal: 92, lastReading: '5 min', type: 'Flujo', location: 'Sector Norte', installed: '2024-01-20' },
+            { id: 'ESP32-003', name: 'Sector Rural A', status: 'online', battery: 82, signal: 68, lastReading: '3 min', type: 'Calidad', location: 'Vereda El Porvenir', installed: '2024-02-01' },
+            { id: 'ESP32-004', name: 'Sector Rural B', status: 'warning', battery: 45, signal: 75, lastReading: '15 min', type: 'Presión', location: 'Vereda La Esperanza', installed: '2024-02-10' }
+        ];
+
+        let alertsData = [];
+        let currentAlertId = null;
+
+        // Initialize
+        updateTime();
+        setInterval(updateTime, 1000);
+        renderSensorsTable();
+        renderSensorsManagement();
+        initChart();
+        loadAlerts();
+        setInterval(updateMetrics, 5000);
+
         function updateTime() {
             const now = new Date();
             document.getElementById('currentTime').textContent = now.toLocaleTimeString('es-CO');
         }
-        setInterval(updateTime, 1000);
-        updateTime();
 
-        // Simular datos en tiempo real
+        function changeTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            document.querySelectorAll('.view').forEach(view => view.style.display = 'none');
+            document.getElementById(tabName + '-view').style.display = 'block';
+        }
+
+        function renderSensorsTable() {
+            const tbody = document.getElementById('sensorsTableBody');
+            tbody.innerHTML = sensorsData.map(sensor => `
+                <tr>
+                    <td><strong>${sensor.id}</strong></td>
+                    <td>${sensor.name}</td>
+                    <td><span class="status-badge ${sensor.status === 'online' ? 'status-normal' : 'status-warning'}">${sensor.status === 'online' ? '🟢 Online' : '🟡 Advertencia'}</span></td>
+                    <td>${sensor.battery}%</td>
+                    <td>${sensor.signal}%</td>
+                    <td>Hace ${sensor.lastReading}</td>
+                    <td>
+                        <button class="action-btn action-btn-view" onclick="viewSensorDetail('${sensor.id}')">👁️ Ver</button>
+                        <button class="action-btn action-btn-edit" onclick="editSensor('${sensor.id}')">✏️ Editar</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderSensorsManagement() {
+            const tbody = document.getElementById('sensorsManagementBody');
+            tbody.innerHTML = sensorsData.map(sensor => `
+                <tr>
+                    <td><strong>${sensor.id}</strong></td>
+                    <td>${sensor.name}</td>
+                    <td>${sensor.type}</td>
+                    <td><span class="status-badge ${sensor.status === 'online' ? 'status-normal' : 'status-warning'}">${sensor.status === 'online' ? 'Online' : 'Advertencia'}</span></td>
+                    <td>${sensor.location}</td>
+                    <td>${sensor.installed}</td>
+                    <td>
+                        <button class="action-btn action-btn-view" onclick="viewSensorDetail('${sensor.id}')">👁️</button>
+                        <button class="action-btn action-btn-edit" onclick="editSensor('${sensor.id}')">✏️</button>
+                        <button class="action-btn action-btn-delete" onclick="deleteSensor('${sensor.id}')">🗑️</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function viewSensorDetail(sensorId) {
+            const sensor = sensorsData.find(s => s.id === sensorId);
+            if (!sensor) return;
+
+            document.getElementById('modalTitle').textContent = `Detalle: ${sensor.name}`;
+            document.getElementById('modalBody').innerHTML = `
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <div class="detail-label">ID del Sensor</div>
+                        <div class="detail-value">${sensor.id}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Estado</div>
+                        <div class="detail-value">${sensor.status === 'online' ? '🟢 Online' : '🟡 Advertencia'}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Batería</div>
+                        <div class="detail-value">${sensor.battery}%</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Señal</div>
+                        <div class="detail-value">${sensor.signal}%</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Tipo</div>
+                        <div class="detail-value">${sensor.type}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Ubicación</div>
+                        <div class="detail-value">${sensor.location}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Última Lectura</div>
+                        <div class="detail-value">Hace ${sensor.lastReading}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Instalación</div>
+                        <div class="detail-value">${sensor.installed}</div>
+                    </div>
+                </div>
+                <div style="margin-top: 20px;">
+                    <h3 style="margin-bottom: 15px;">Historial de Lecturas (Últimas 24h)</h3>
+                    <div class="chart-wrapper" style="height: 250px;">
+                        <canvas id="sensorHistoryChart"></canvas>
+                    </div>
+                </div>
+            `;
+
+            openModal('detailModal');
+
+            // Create history chart
+            setTimeout(() => {
+                const ctx = document.getElementById('sensorHistoryChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: Array.from({length: 24}, (_, i) => `${i}:00`),
+                        datasets: [{
+                            label: 'Lecturas',
+                            data: Array.from({length: 24}, () => 60 + Math.random() * 40),
+                            borderColor: '#2196F3',
+                            backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: { y: { beginAtZero: true } }
+                    }
+                });
+            }, 100);
+        }
+
+        function openDetailModal(type) {
+            const titles = {
+                'nivel': 'Nivel de Agua',
+                'turbidez': 'Turbidez del Agua',
+                'conductividad': 'Conductividad Eléctrica',
+                'ph': 'pH del Agua'
+            };
+
+            const values = {
+                'nivel': document.getElementById('waterLevel').textContent + '%',
+                'turbidez': document.getElementById('turbidity').textContent + ' NTU',
+                'conductividad': document.getElementById('conductivity').textContent + ' µS/cm',
+                'ph': document.getElementById('phLevel').textContent + ' pH'
+            };
+
+            document.getElementById('modalTitle').textContent = `Detalle: ${titles[type]}`;
+            document.getElementById('modalBody').innerHTML = `
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <div class="detail-label">Valor Actual</div>
+                        <div class="detail-value">${values[type]}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Estado</div>
+                        <div class="detail-value">🟢 Óptimo</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Mínimo (24h)</div>
+                        <div class="detail-value">${(parseFloat(values[type]) - Math.random() * 10).toFixed(1)}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Máximo (24h)</div>
+                        <div class="detail-value">${(parseFloat(values[type]) + Math.random() * 10).toFixed(1)}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Promedio (24h)</div>
+                        <div class="detail-value">${values[type]}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Última Actualización</div>
+                        <div class="detail-value">Hace 2 min</div>
+                    </div>
+                </div>
+                <div style="margin-top: 20px;">
+                    <h3 style="margin-bottom: 15px;">Tendencia (Últimas 24h)</h3>
+                    <div class="chart-wrapper" style="height: 250px;">
+                        <canvas id="detailChart"></canvas>
+                    </div>
+                </div>
+                <div style="margin-top: 20px; display: flex; gap: 10px;">
+                    <button class="btn btn-success" onclick="exportMetricExcel('${type}')">📥 Exportar Datos</button>
+                    <button class="btn" onclick="createAlertFromMetric('${type}')">🚨 Crear Alerta</button>
+                </div>
+            `;
+
+            openModal('detailModal');
+
+            setTimeout(() => {
+                const ctx = document.getElementById('detailChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: Array.from({length: 24}, (_, i) => `${i}:00`),
+                        datasets: [{
+                            label: titles[type],
+                            data: Array.from({length: 24}, () => parseFloat(values[type]) + (Math.random() - 0.5) * 10),
+                            borderColor: '#2196F3',
+                            backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: { y: { beginAtZero: true } }
+                    }
+                });
+            }, 100);
+        }
+
+        function editSensor(sensorId) {
+            alert(`Función de edición para sensor ${sensorId} - En desarrollo`);
+        }
+
+        function deleteSensor(sensorId) {
+            if (confirm(`¿Está seguro de eliminar el sensor ${sensorId}?`)) {
+                sensorsData = sensorsData.filter(s => s.id !== sensorId);
+                renderSensorsTable();
+                renderSensorsManagement();
+                alert('Sensor eliminado correctamente');
+            }
+        }
+
+        function addNewSensor() {
+            alert('Formulario de nuevo sensor - En desarrollo');
+        }
+
+        function refreshSensors() {
+            renderSensorsTable();
+            alert('Datos actualizados correctamente');
+        }
+
+        // Alerts Management
+        function loadAlerts() {
+            const stored = localStorage.getItem('aquamonitor_alerts');
+            if (stored) {
+                alertsData = JSON.parse(stored);
+            } else {
+                alertsData = [
+                    { id: 1, priority: 'high', type: 'nivel', message: 'Posible fuga detectada en Sector B', sensor: 'ESP32-004', status: 'active', created: new Date(Date.now() - 3600000).toISOString() },
+                    { id: 2, priority: 'medium', type: 'turbidez', message: 'Turbidez elevada en tanque principal', sensor: 'ESP32-001', status: 'active', created: new Date(Date.now() - 7200000).toISOString() },
+                    { id: 3, priority: 'low', type: 'sistema', message: 'Mantenimiento programado para mañana', sensor: '', status: 'active', created: new Date(Date.now() - 10800000).toISOString() }
+                ];
+            }
+            renderAlerts();
+        }
+
+        function renderAlerts(filter = 'all') {
+            let filtered = alertsData;
+            
+            if (filter !== 'all') {
+                if (filter === 'active' || filter === 'resolved') {
+                    filtered = alertsData.filter(a => a.status === filter);
+                } else {
+                    filtered = alertsData.filter(a => a.priority === filter);
+                }
+            }
+
+            const container = document.getElementById('alertsList');
+            if (filtered.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">No hay alertas para mostrar</p>';
+                return;
+            }
+
+            container.innerHTML = filtered.map(alert => `
+                <div class="alert-item alert-${alert.priority}">
+                    <div class="alert-content">
+                        <div class="alert-message">
+                            ${alert.priority === 'high' ? '🔴' : alert.priority === 'medium' ? '🟠' : '🔵'} 
+                            ${alert.message}
+                        </div>
+                        <div class="alert-meta">
+                            Tipo: ${alert.type} ${alert.sensor ? '• Sensor: ' + alert.sensor : ''} • ${formatDate(alert.created)} • Estado: ${alert.status === 'active' ? 'Activa' : 'Resuelta'}
+                        </div>
+                    </div>
+                    <div class="alert-actions">
+                        ${alert.status === 'active' ? `<button class="action-btn action-btn-view" onclick="resolveAlert(${alert.id})">✅ Resolver</button>` : ''}
+                        <button class="action-btn action-btn-edit" onclick="editAlert(${alert.id})">✏️ Editar</button>
+                        <button class="action-btn action-btn-delete" onclick="deleteAlert(${alert.id})">🗑️</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function filterAlerts() {
+            const filter = document.getElementById('alertFilter').value;
+            renderAlerts(filter);
+        }
+
+        function openAlertModal(mode, alertId = null) {
+            currentAlertId = alertId;
+            const modal = document.getElementById('alertModal');
+            
+            if (mode === 'edit' && alertId) {
+                const alert = alertsData.find(a => a.id === alertId);
+                if (alert) {
+                    document.getElementById('alertModalTitle').textContent = 'Editar Alerta';
+                    document.getElementById('alertPriority').value = alert.priority;
+                    document.getElementById('alertType').value = alert.type;
+                    document.getElementById('alertMessage').value = alert.message;
+                    document.getElementById('alertSensor').value = alert.sensor;
+                }
+            } else {
+                document.getElementById('alertModalTitle').textContent = 'Nueva Alerta';
+                document.getElementById('alertPriority').value = 'medium';
+                document.getElementById('alertType').value = 'nivel';
+                document.getElementById('alertMessage').value = '';
+                document.getElementById('alertSensor').value = '';
+            }
+            
+            openModal('alertModal');
+        }
+
+        function saveAlert(event) {
+            event.preventDefault();
+            
+            const alertData = {
+                priority: document.getElementById('alertPriority').value,
+                type: document.getElementById('alertType').value,
+                message: document.getElementById('alertMessage').value,
+                sensor: document.getElementById('alertSensor').value,
+                status: 'active'
+            };
+
+            if (currentAlertId) {
+                const index = alertsData.findIndex(a => a.id === currentAlertId);
+                alertsData[index] = { ...alertsData[index], ...alertData };
+            } else {
+                alertData.id = Date.now();
+                alertData.created = new Date().toISOString();
+                alertsData.unshift(alertData);
+            }
+
+            localStorage.setItem('aquamonitor_alerts', JSON.stringify(alertsData));
+            renderAlerts();
+            closeModal('alertModal');
+            alert(currentAlertId ? 'Alerta actualizada correctamente' : 'Alerta creada correctamente');
+        }
+
+        function editAlert(alertId) {
+            openAlertModal('edit', alertId);
+        }
+
+        function deleteAlert(alertId) {
+            if (confirm('¿Está seguro de eliminar esta alerta?')) {
+                alertsData = alertsData.filter(a => a.id !== alertId);
+                localStorage.setItem('aquamonitor_alerts', JSON.stringify(alertsData));
+                renderAlerts();
+                alert('Alerta eliminada correctamente');
+            }
+        }
+
+        function resolveAlert(alertId) {
+            const alert = alertsData.find(a => a.id === alertId);
+            if (alert) {
+                alert.status = 'resolved';
+                localStorage.setItem('aquamonitor_alerts', JSON.stringify(alertsData));
+                renderAlerts();
+                alert('Alerta marcada como resuelta');
+            }
+        }
+
+        function createAlertFromMetric(type) {
+            closeModal('detailModal');
+            document.getElementById('alertType').value = type;
+            openAlertModal('create');
+        }
+
+        // Modal Functions
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        // Excel Export Functions
+        function exportToExcel() {
+            const wb = XLSX.utils.book_new();
+
+            // Sensors Sheet
+            const sensorsSheet = XLSX.utils.json_to_sheet(sensorsData);
+            XLSX.utils.book_append_sheet(wb, sensorsSheet, 'Sensores');
+
+            // Alerts Sheet
+            const alertsSheet = XLSX.utils.json_to_sheet(alertsData.map(a => ({
+                ID: a.id,
+                Prioridad: a.priority,
+                Tipo: a.type,
+                Mensaje: a.message,
+                Sensor: a.sensor,
+                Estado: a.status,
+                Fecha: formatDate(a.created)
+            })));
+            XLSX.utils.book_append_sheet(wb, alertsSheet, 'Alertas');
+
+            // Metrics Sheet
+            const metricsData = [{
+                Parametro: 'Nivel de Agua',
+                Valor: document.getElementById('waterLevel').textContent + '%',
+                Estado: 'Óptimo',
+                Fecha: new Date().toLocaleString('es-CO')
+            }, {
+                Parametro: 'Turbidez',
+                Valor: document.getElementById('turbidity').textContent + ' NTU',
+                Estado: 'Óptimo',
+                Fecha: new Date().toLocaleString('es-CO')
+            }, {
+                Parametro: 'Conductividad',
+                Valor: document.getElementById('conductivity').textContent + ' µS/cm',
+                Estado: 'Óptimo',
+                Fecha: new Date().toLocaleString('es-CO')
+            }, {
+                Parametro: 'pH',
+                Valor: document.getElementById('phLevel').textContent + ' pH',
+                Estado: 'Óptimo',
+                Fecha: new Date().toLocaleString('es-CO')
+            }];
+            const metricsSheet = XLSX.utils.json_to_sheet(metricsData);
+            XLSX.utils.book_append_sheet(wb, metricsSheet, 'Métricas');
+
+            XLSX.writeFile(wb, `AquaMonitor_Reporte_${formatDateFilename()}.xlsx`);
+            alert('Reporte exportado correctamente');
+        }
+
+        function exportSensorsExcel() {
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet(sensorsData);
+            XLSX.utils.book_append_sheet(wb, ws, 'Sensores');
+            XLSX.writeFile(wb, `Sensores_${formatDateFilename()}.xlsx`);
+        }
+
+        function exportMetricExcel(type) {
+            const titles = {
+                'nivel': 'Nivel_Agua',
+                'turbidez': 'Turbidez',
+                'conductividad': 'Conductividad',
+                'ph': 'pH'
+            };
+
+            const data = Array.from({length: 24}, (_, i) => ({
+                Hora: `${i}:00`,
+                Valor: (Math.random() * 20 + 70).toFixed(2),
+                Fecha: new Date().toLocaleDateString('es-CO')
+            }));
+
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet(data);
+            XLSX.utils.book_append_sheet(wb, ws, titles[type]);
+            XLSX.writeFile(wb, `${titles[type]}_${formatDateFilename()}.xlsx`);
+        }
+
+        function generateReport() {
+            const reportType = document.getElementById('reportType').value;
+            const dateFrom = document.getElementById('reportDateFrom').value;
+            const dateTo = document.getElementById('reportDateTo').value;
+
+            if (!dateFrom || !dateTo) {
+                alert('Por favor seleccione el rango de fechas');
+                return;
+            }
+
+            const wb = XLSX.utils.book_new();
+
+            if (reportType === 'general' || reportType === 'sensores') {
+                const ws = XLSX.utils.json_to_sheet(sensorsData);
+                XLSX.utils.book_append_sheet(wb, ws, 'Sensores');
+            }
+
+            if (reportType === 'general' || reportType === 'alertas') {
+                const alertsFormatted = alertsData.map(a => ({
+                    ID: a.id,
+                    Prioridad: a.priority,
+                    Tipo: a.type,
+                    Mensaje: a.message,
+                    Sensor: a.sensor,
+                    Estado: a.status,
+                    Fecha: formatDate(a.created)
+                }));
+                const ws = XLSX.utils.json_to_sheet(alertsFormatted);
+                XLSX.utils.book_append_sheet(wb, ws, 'Alertas');
+            }
+
+            if (reportType === 'general' || reportType === 'consumo') {
+                const consumoData = Array.from({length: 7}, (_, i) => ({
+                    Día: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'][i],
+                    Consumo_Litros: Math.floor(800 + Math.random() * 300),
+                    Fecha: new Date(Date.now() - (6-i) * 86400000).toLocaleDateString('es-CO')
+                }));
+                const ws = XLSX.utils.json_to_sheet(consumoData);
+                XLSX.utils.book_append_sheet(wb, ws, 'Consumo');
+            }
+
+            XLSX.writeFile(wb, `Reporte_${reportType}_${dateFrom}_${dateTo}.xlsx`);
+            alert('Reporte generado correctamente');
+        }
+
+        // Utility Functions
+        function formatDate(isoString) {
+            const date = new Date(isoString);
+            const now = Date.now();
+            const diff = now - date.getTime();
+            const minutes = Math.floor(diff / 60000);
+            const hours = Math.floor(diff / 3600000);
+            const days = Math.floor(diff / 86400000);
+
+            if (minutes < 60) return `Hace ${minutes} min`;
+            if (hours < 24) return `Hace ${hours} h`;
+            return `Hace ${days} días`;
+        }
+
+        function formatDateFilename() {
+            const now = new Date();
+            return `${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}_${now.getHours().toString().padStart(2,'0')}${now.getMinutes().toString().padStart(2,'0')}`;
+        }
+
         function updateMetrics() {
             const waterLevel = document.getElementById('waterLevel');
             const turbidity = document.getElementById('turbidity');
             const conductivity = document.getElementById('conductivity');
+            const phLevel = document.getElementById('phLevel');
             
-            const newWaterLevel = (parseFloat(waterLevel.textContent) + (Math.random() - 0.5) * 2).toFixed(1);
-            const newTurbidity = (parseFloat(turbidity.textContent) + (Math.random() - 0.5) * 0.5).toFixed(1);
-            const newConductivity = (parseFloat(conductivity.textContent) + (Math.random() - 0.5) * 10).toFixed(0);
-            
-            waterLevel.textContent = Math.max(0, Math.min(100, newWaterLevel));
-            turbidity.textContent = Math.max(0, Math.min(50, newTurbidity));
-            conductivity.textContent = Math.max(0, Math.min(1000, newConductivity));
-            
-            document.getElementById('waterLevelBar').style.width = waterLevel.textContent + '%';
-            document.getElementById('turbidityBar').style.width = (turbidity.textContent * 2) + '%';
-            document.getElementById('conductivityBar').style.width = (conductivity.textContent / 10) + '%';
-        }
-        setInterval(updateMetrics, 3000);
-
-        // Charts
-        const trendCtx = document.getElementById('trendChart').getContext('2d');
-        const trendData = {
-            labels: Array.from({length: 24}, (_, i) => `${i}:00`),
-            datasets: [{
-                label: 'Nivel de Agua (%)',
-                data: Array.from({length: 24}, () => 70 + Math.random() * 15),
-                borderColor: '#2196F3',
-                backgroundColor: 'rgba(33, 150, 243, 0.1)',
-                fill: true,
-                tension: 0.4
-            }]
-        };
-
-        new Chart(trendCtx, {
-            type: 'line',
-            data: trendData,
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: true, position: 'top' }
-                },
-                scales: {
-                    y: { beginAtZero: true, max: 100 }
-                }
-            }
-        });
-
-        const weeklyCtx = document.getElementById('weeklyChart').getContext('2d');
-        const weeklyData = {
-            labels: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
-            datasets: [
-                {
-                    label: 'Consumo Real (L)',
-                    data: [950, 1100, 890, 1050, 980, 850, 920],
-                    backgroundColor: '#2196F3'
-                },
-                {
-                    label: 'Objetivo (L)',
-                    data: [1000, 1000, 1000, 1000, 1000, 1000, 1000],
-                    backgroundColor: '#E0E0E0'
-                }
-            ]
-        };
-
-        new Chart(weeklyCtx, {
-            type: 'bar',
-            data: weeklyData,
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: true, position: 'top' }
-                },
-                scales: {
-                    y: { beginAtZero: true }
-                }
-            }
-        });
-
-        // Tab navigation
-        function changeTab(tabName) {
-            const tabs = document.querySelectorAll('.tab');
-            tabs.forEach(tab => tab.classList.remove('active'));
-            event.target.classList.add('active');
-            // Aquí podrías cambiar el contenido según la pestaña
+            waterLevel.textContent = (parseFloat(waterLevel.textContent) + (Math.random() - 0.5) * 2).toFixed(1);
+            turbidity.textContent = (parseFloat(turbidity.textContent) + (Math.random() - 0.5) * 0.5).toFixed(1);
+            conductivity.textContent = Math.floor(parseFloat(conductivity.textContent) + (Math.random() - 0.5) * 10);
+            phLevel.textContent = (parseFloat(phLevel.textContent) + (Math.random() - 0.5) * 0.2).toFixed(1);
         }
 
-        // Export function
-        function exportReport() {
-            alert('📊 Exportando reporte en formato PDF...\n\nEsta funcionalidad se implementará con el backend.');
+        function initChart() {
+            const ctx = document.getElementById('consumptionChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 24}, (_, i) => `${i}:00`),
+                    datasets: [{
+                        label: 'Consumo (L)',
+                        data: Array.from({length: 24}, () => 70 + Math.random() * 30),
+                        borderColor: '#2196F3',
+                        backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: true } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
         }
     </script>
 </body>
